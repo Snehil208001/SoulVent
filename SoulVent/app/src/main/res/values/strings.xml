@@ -21,8 +21,8 @@
     <string name="whats_on_your_mind_placeholder">Share your thoughts anonymously...</string>
     <string name="sharing_button_text">Sharing...</string>
     <string name="error_adding_post">Failed to add post: %s</string>
-    <string name="comment_timestamp_format" />
     <string name="post_timestamp_content_description">\n</string>
+    <string name="comment_timestamp_format">%s</string>
 
 
 </resources>
