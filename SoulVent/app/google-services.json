@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "156937216237",
+    "firebase_url": "https://soulvent-30a48-default-rtdb.firebaseio.com",
+    "project_id": "soulvent-30a48",
+    "storage_bucket": "soulvent-30a48.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:156937216237:android:ae8b92f51be9ce2a96ace4",
+        "android_client_info": {
+          "package_name": "com.example.soulvent"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAh4hbmSDhRhnFiR5DsZPXaUjlsnqFg-AA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

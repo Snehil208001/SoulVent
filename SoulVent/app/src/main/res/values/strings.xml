@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">SoulVent</string>
+    <string name="new_vent_content_description">Create a new vent</string>
+    <string name="no_vents_message">No vents yet. Be the first to share.</string>
+    <string name="timestamp_format">🕒 %s</string>
+    <string name="write_vent_title">Write a Vent</string>
+    <string name="whats_on_your_mind_label">What’s on your mind?</string>
+    <string name="share_anonymously_button">Share Anonymously</string>
+
+    <string name="like_button_content_description">Like Post</string>
+    <string name="comment_button_content_description">View and add comments</string>
+    <string name="comments_title">Comments</string>
+    <string name="back_button_content_description">Back</string>
+    <string name="add_a_comment_label">Add a comment...</string>
+    <string name="send_comment_button_content_description">Send comment</string>
+    <string name="no_comments_message">No comments yet. Be the first to comment.</string>
+    <string name="error_loading_data">Error loading data: %s</string>
+    <string name="retry_button_text">Retry</string>
+    <string name="error_loading_comments">Failed to load comments: %s</string>
+    <string name="comment_info_format">By %s at %s</string>
+    <string name="whats_on_your_mind_placeholder">Share your thoughts anonymously...</string>
+    <string name="sharing_button_text">Sharing...</string>
+    <string name="error_adding_post">Failed to add post: %s</string>
+    <string name="comment_timestamp_format" />
+    <string name="post_timestamp_content_description">\n</string>
+
+
+</resources>
