@@ -8,6 +8,7 @@ import com.google.firebase.database.ktx.database
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.ktx.Firebase
 import com.example.soulvent.model.Comment
 import com.example.soulvent.model.Post
@@ -23,14 +24,15 @@ class PostRepository {
     private val postsCollection = db.collection("vents")
     private val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
 
-    suspend fun addPost(content: String) {
+    suspend fun addPost(content: String, mood: String) {
         val postId = postsCollection.document().id
         val post = Post(
             id = postId,
             userId = userId,
             content = content,
             commentCount = 0,
-            likeCount = 0
+            likeCount = 0,
+            mood = mood
         )
         postsCollection.document(post.id).set(post).await()
         database.child("posts").child(postId).setValue(post)
@@ -41,7 +43,7 @@ class PostRepository {
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
-                    close(e) // Close the flow with the exception
+                    close(e)
                     return@addSnapshotListener
                 }
 
@@ -56,25 +58,6 @@ class PostRepository {
         awaitClose { subscription.remove() }
     }
 
-    fun getPostsFromRealtimeDatabase(): Flow<List<Post>> = callbackFlow {
-        val postListener = object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val posts = dataSnapshot.children.mapNotNull {
-                    it.getValue(Post::class.java)
-                }
-                trySend(posts).isSuccess
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {
-                close(databaseError.toException())
-            }
-        }
-        val ref = database.child("posts")
-        ref.addValueEventListener(postListener)
-
-        awaitClose { ref.removeEventListener(postListener) }
-    }
-
 
     suspend fun addComment(postId: String, content: String) {
         val comment = Comment(
@@ -83,12 +66,18 @@ class PostRepository {
             userId = userId,
             content = content
         )
-        postsCollection.document(postId).collection("comments").document(comment.id)
-            .set(comment)
-            .await()
 
-        postsCollection.document(postId).update("commentCount", FieldValue.increment(1))
-            .await()
+        val postRef = postsCollection.document(postId)
+
+        db.runTransaction { transaction ->
+            val postSnapshot = transaction.get(postRef)
+            if (postSnapshot.exists()) {
+                transaction.set(postRef.collection("comments").document(comment.id), comment)
+                transaction.update(postRef, "commentCount", FieldValue.increment(1))
+            } else {
+                throw Exception("Post with ID $postId not found.")
+            }
+        }.await()
     }
 
 
@@ -114,7 +103,6 @@ class PostRepository {
     }
 
 
-
     suspend fun toggleLike(postId: String) {
         val reactionRef = postsCollection.document(postId)
             .collection("reactions")
@@ -123,11 +111,9 @@ class PostRepository {
         db.runTransaction { transaction ->
             val snapshot = transaction.get(reactionRef)
             if (snapshot.exists()) {
-                // User has already liked, so unlike (delete reaction)
                 transaction.delete(reactionRef)
                 transaction.update(postsCollection.document(postId), "likeCount", FieldValue.increment(-1))
             } else {
-                // User has not liked, so like (add reaction)
                 val reaction = Reaction(
                     id = userId,
                     postId = postId,
@@ -150,5 +136,38 @@ class PostRepository {
             .get()
             .await()
             .exists()
+    }
+
+    // --- New Functions for User Blocking ---
+
+    fun getCurrentUserId(): String? {
+        return FirebaseAuth.getInstance().currentUser?.uid
+    }
+
+    fun getBlockedUsersFlow(userId: String): Flow<List<String>> = callbackFlow {
+        val userDocRef = db.collection("users").document(userId)
+
+        val subscription = userDocRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            val blockedUsers = if (snapshot != null && snapshot.exists()) {
+                snapshot.get("blockedUsers") as? List<String> ?: emptyList()
+            } else {
+                emptyList()
+            }
+            trySend(blockedUsers).isSuccess
+        }
+        awaitClose { subscription.remove() }
+    }
+
+    suspend fun blockUser(userIdToBlock: String) {
+        val currentUserId = getCurrentUserId() ?: return
+        val userDocRef = db.collection("users").document(currentUserId)
+        userDocRef.set(
+            mapOf("blockedUsers" to FieldValue.arrayUnion(userIdToBlock)),
+            SetOptions.merge()
+        ).await()
     }
 }

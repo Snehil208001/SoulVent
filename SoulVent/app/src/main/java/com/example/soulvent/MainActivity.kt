@@ -9,25 +9,32 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.rememberNavController
 import com.example.soulvent.nav.Screen
 import com.example.soulvent.nav.SoulMateNavGraph
 import com.example.soulvent.ui.theme.SoulVentTheme
+import com.example.soulvent.viewmodel.SettingsViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : ComponentActivity() {
 
     private val TAG = "MainActivity"
+
+    // Use ViewModelProvider to get the ViewModel instance
+    private lateinit var settingsViewModel: SettingsViewModel
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -41,9 +48,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize the ViewModel
+        settingsViewModel = ViewModelProvider(this).get(SettingsViewModel::class.java)
+
         enableEdgeToEdge()
         setContent {
-            SoulVentTheme {
+            val themeName by settingsViewModel.themeName.collectAsState()
+
+            SoulVentTheme(themeName = themeName) {
                 val navController = rememberNavController()
 
                 LaunchedEffect(Unit) {
@@ -67,6 +80,7 @@ class MainActivity : ComponentActivity() {
         askNotificationPermission()
     }
 
+    // The rest of your MainActivity remains the same
     private fun setupAnonymousAuthAndFCMToken() {
         val auth = FirebaseAuth.getInstance()
         val firestore = FirebaseFirestore.getInstance()

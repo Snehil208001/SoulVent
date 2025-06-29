@@ -1,29 +1,10 @@
 package com.example.soulvent.screens
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -32,14 +13,16 @@ import androidx.navigation.NavController
 import com.example.soulvent.R
 import com.example.soulvent.viewmodel.PostViewModel
 
-
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PostVentScreen(
     navController: NavController,
     viewModel: PostViewModel = viewModel()
 ) {
     var text by remember { mutableStateOf("") }
+    val moods = listOf("😊 Happy", "😢 Sad", "😬 Anxious", "🙏 Grateful", "😡 Angry")
+    var selectedMood by remember { mutableStateOf<String?>(null) }
+
     val isAddingPost by viewModel.isAddingPost.collectAsState()
     val addPostError by viewModel.addPostError.collectAsState()
 
@@ -70,7 +53,9 @@ fun PostVentScreen(
                 },
                 label = { Text(stringResource(R.string.whats_on_your_mind_label)) },
                 placeholder = { Text(stringResource(R.string.whats_on_your_mind_placeholder)) },
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
                 maxLines = 10,
                 minLines = 3,
                 enabled = !isAddingPost,
@@ -85,6 +70,35 @@ fun PostVentScreen(
                 )
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("How are you feeling?", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                moods.forEach { mood ->
+                    val isSelected = selectedMood == mood
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedMood = if (isSelected) null else mood },
+                        label = { Text(mood) },
+                        leadingIcon = if (isSelected) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = "Selected mood",
+                                    modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                )
+                            }
+                        } else {
+                            null
+                        }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             if (addPostError != null) {
@@ -92,14 +106,19 @@ fun PostVentScreen(
                     text = stringResource(R.string.error_adding_post, addPostError ?: "Unknown error"),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
                 )
             }
 
             Button(
                 onClick = {
                     if (text.isNotBlank()) {
-                        viewModel.addPost(text, currentOnAddPostComplete)
+                        // FIX: This call now provides the `mood` and the `onComplete` callback correctly.
+                        viewModel.addPost(text, selectedMood ?: "") {
+                            currentOnAddPostComplete()
+                        }
                     }
                 },
                 enabled = text.isNotBlank() && !isAddingPost,
@@ -122,4 +141,3 @@ fun PostVentScreen(
         }
     }
 }
-

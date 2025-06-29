@@ -5,14 +5,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import androidx.navigation.NavType
+import com.example.soulvent.screens.ArtCanvasScreen
 import com.example.soulvent.screens.CommentsScreen
+import com.example.soulvent.screens.GratitudeJarScreen
 import com.example.soulvent.screens.HomeScreen
 import com.example.soulvent.screens.PostVentScreen
-
+import com.example.soulvent.screens.SettingsScreen
 
 @Composable
 fun SoulMateNavGraph(navController: NavHostController, paddingValues: PaddingValues) {
@@ -37,6 +39,16 @@ fun SoulMateNavGraph(navController: NavHostController, paddingValues: PaddingVal
             } else {
                 navController.popBackStack()
             }
+        }
+        composable("settings") {
+            SettingsScreen(navController = navController)
+        }
+        composable("gratitude_jar") {
+            GratitudeJarScreen(navController = navController)
+        }
+        // Add the new route for the Art Canvas screen
+        composable("art_canvas") {
+            ArtCanvasScreen(navController = navController)
         }
     }
 }

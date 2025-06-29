@@ -16,3 +16,11 @@ val VentMateOrange = Color(0xFFFF9800)
 val VentMateBackground = Color(0xFFF5F5F5)
 val VentMateCardBackground = Color(0xFFFFFFFF)
 
+
+val ForestGreen = Color(0xFF388E3C)
+val ForestLightGreen = Color(0xFFA5D6A7)
+val OceanBlue = Color(0xFF1976D2)
+val OceanLightBlue = Color(0xFF81D4FA)
+val SunsetOrange = Color(0xFFF57C00)
+val SunsetLightOrange = Color(0xFFFFCC80)
+

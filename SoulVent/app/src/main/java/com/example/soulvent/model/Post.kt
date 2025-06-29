@@ -10,5 +10,6 @@ data class Post(
     @ServerTimestamp
     val timestamp: Timestamp? = null,
     val commentCount: Int = 0,
-    val likeCount: Int = 0
+    val likeCount: Int = 0,
+    val mood: String = ""
 )

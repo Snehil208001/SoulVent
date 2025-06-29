@@ -97,4 +97,10 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-messaging-ktx")
 
+    //theme
+    implementation("androidx.datastore:datastore-preferences:1.1.7")
+
+    //canvas
+    implementation("dev.shreyaspatil:capturable:1.0.3")
+
 }
