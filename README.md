@@ -74,8 +74,8 @@ Here is a screen recording demonstrating the app's features:
 
 https://drive.google.com/drive/folders/1IGwUhj-Hn4ld6HuztMBCZqPUC8F0UVxr?usp=sharing
 📸 Screenshots
-https://your-link-to-screenshot-1.com/screenshot1.png" alt="Screenshot 1" width="200">	https://your-link-to-screenshot-2.com/screenshot2.png" alt="Screenshot 2" width="200">	https://your-link-to-screenshot-3.com/screenshot3.png" alt="Screenshot 3" width="200">
-
+![image alt](https://github.com/Snehil208001/SoulVent/blob/f6db78af05006494fbf9e6cf15f4daa3f50ba7a0/Soulvent1.jpg)
+![image alt](https://github.com/Snehil208001/SoulVent/blob/f6db78af05006494fbf9e6cf15f4daa3f50ba7a0/SoulVent2.jpg)
 Export to Sheets
 📦 Dependencies
 The SoulVent app uses a number of modern Android libraries and technologies, including:
