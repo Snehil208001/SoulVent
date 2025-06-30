@@ -1,23 +1,26 @@
 package com.example.soulvent.data
 
 import android.graphics.Bitmap
+import com.example.soulvent.model.Comment
+import com.example.soulvent.model.Post
+import com.example.soulvent.model.Reaction
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.ktx.Firebase
-import com.example.soulvent.model.Comment
-import com.example.soulvent.model.Post
-import com.example.soulvent.model.Reaction
 import com.google.firebase.storage.ktx.storage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.io.ByteArrayOutputStream
-import com.google.firebase.firestore.FieldPath
 
 class PostRepository {
     private val db = FirebaseFirestore.getInstance()
@@ -49,20 +52,25 @@ class PostRepository {
             imageUrl = imageUrl
         )
         postsCollection.document(post.id).set(post).await()
+
+        // Realtime DB mirror
+        database.child("posts").child(post.id).setValue(post)
     }
 
     suspend fun getRandomPrompt(): String? {
         return try {
-            val randomId = db.collection("prompts").document().id
-            val query = db.collection("prompts")
-                .whereGreaterThanOrEqualTo(FieldPath.documentId(), randomId)
-                .limit(1)
+            val promptsRef = database.child("prompts")
+            val snapshot = promptsRef.get().await()
 
-            var documents = query.get().await()
-            if (documents.isEmpty) {
-                documents = db.collection("prompts").limit(1).get().await()
-            }
-            documents.firstOrNull()?.getString("question")
+            if (snapshot.exists()) {
+                val promptsList = mutableListOf<String>()
+                for (child in snapshot.children) {
+                    child.getValue(String::class.java)?.let {
+                        promptsList.add(it)
+                    }
+                }
+                promptsList.randomOrNull()
+            } else null
         } catch (e: Exception) {
             null
         }
@@ -115,7 +123,6 @@ class PostRepository {
         awaitClose { subscription.remove() }
     }
 
-
     suspend fun addComment(postId: String, content: String) {
         val comment = Comment(
             id = postsCollection.document(postId).collection("comments").document().id,
@@ -131,12 +138,16 @@ class PostRepository {
             if (postSnapshot.exists()) {
                 transaction.set(postRef.collection("comments").document(comment.id), comment)
                 transaction.update(postRef, "commentCount", FieldValue.increment(1))
-            } else {
-                throw Exception("Post with ID $postId not found.")
-            }
+            } else throw Exception("Post with ID $postId not found.")
         }.await()
-    }
 
+        // Realtime DB mirror
+        database.child("posts").child(postId).child("comments").child(comment.id).setValue(comment)
+        database.child("posts").child(postId).child("commentCount").get().addOnSuccessListener { snapshot ->
+            val count = snapshot.getValue(Int::class.java) ?: 0
+            database.child("posts").child(postId).child("commentCount").setValue(count + 1)
+        }
+    }
 
     fun getCommentsForPost(postId: String): Flow<List<Comment>> = callbackFlow {
         val subscription = postsCollection.document(postId)
@@ -168,26 +179,31 @@ class PostRepository {
         db.runTransaction { transaction ->
             val reactionSnapshot = transaction.get(reactionRef)
             val postSnapshot = transaction.get(postRef)
-            // Correctly cast the map values to Long
             val currentReactions = postSnapshot.get("reactions") as? Map<String, Long> ?: emptyMap()
             val existingReactionType = reactionSnapshot.getString("type")
 
             if (reactionSnapshot.exists()) {
                 transaction.delete(reactionRef)
-                val oldReactionCount = (currentReactions[existingReactionType] ?: 1) - 1
-                transaction.update(postRef, "reactions.$existingReactionType", oldReactionCount)
+                val oldCount = (currentReactions[existingReactionType] ?: 1) - 1
+                transaction.update(postRef, "reactions.$existingReactionType", oldCount)
 
                 if (existingReactionType != reactionType) {
                     val newReaction = Reaction(userId, postId, userId, reactionType)
                     transaction.set(reactionRef, newReaction)
-                    val newReactionCount = (currentReactions[reactionType] ?: 0) + 1
-                    transaction.update(postRef, "reactions.$reactionType", newReactionCount)
+                    val newCount = (currentReactions[reactionType] ?: 0) + 1
+                    transaction.update(postRef, "reactions.$reactionType", newCount)
+
+                    database.child("posts/$postId/reactions/$reactionType").setValue(newCount)
+                } else {
+                    database.child("posts/$postId/reactions/$existingReactionType").setValue(oldCount)
                 }
             } else {
                 val newReaction = Reaction(userId, postId, userId, reactionType)
                 transaction.set(reactionRef, newReaction)
-                val newReactionCount = (currentReactions[reactionType] ?: 0) + 1
-                transaction.update(postRef, "reactions.$reactionType", newReactionCount)
+                val newCount = (currentReactions[reactionType] ?: 0) + 1
+                transaction.update(postRef, "reactions.$reactionType", newCount)
+
+                database.child("posts/$postId/reactions/$reactionType").setValue(newCount)
             }
             null
         }.await()
@@ -241,6 +257,9 @@ class PostRepository {
             "content", newContent,
             "lastEdited", FieldValue.serverTimestamp()
         ).await()
+
+        // Update in Realtime DB
+        database.child("posts").child(postId).child("content").setValue(newContent)
     }
 
     suspend fun updateComment(postId: String, commentId: String, newContent: String) {
@@ -248,20 +267,41 @@ class PostRepository {
             "content", newContent,
             "lastEdited", FieldValue.serverTimestamp()
         ).await()
+
+        // Update in Realtime DB
+        database.child("posts").child(postId).child("comments").child(commentId).child("content")
+            .setValue(newContent)
     }
 
     suspend fun reportPost(postId: String) {
         postsCollection.document(postId).update("reportCount", FieldValue.increment(1)).await()
+
+        // Optional: Mirror in Realtime DB
+        database.child("posts").child(postId).child("reportCount")
+            .get().addOnSuccessListener {
+                val count = it.getValue(Int::class.java) ?: 0
+                database.child("posts").child(postId).child("reportCount").setValue(count + 1)
+            }
     }
 
     suspend fun reportComment(postId: String, commentId: String) {
         postsCollection.document(postId).collection("comments").document(commentId)
             .update("reportCount", FieldValue.increment(1)).await()
+
+        database.child("posts").child(postId).child("comments").child(commentId)
+            .child("reportCount").get().addOnSuccessListener {
+                val count = it.getValue(Int::class.java) ?: 0
+                database.child("posts").child(postId).child("comments").child(commentId)
+                    .child("reportCount").setValue(count + 1)
+            }
     }
 
     suspend fun deletePost(postId: String) {
         db.runBatch { batch ->
             batch.delete(postsCollection.document(postId))
         }.await()
+
+        // Realtime DB deletion
+        database.child("posts").child(postId).removeValue()
     }
 }
