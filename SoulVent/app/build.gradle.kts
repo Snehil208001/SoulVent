@@ -124,4 +124,9 @@ dependencies {
     //gemini integration
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
+    // In your dependencies block
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
+    implementation("androidx.media3:media3-session:1.3.1")
+
 }

@@ -10,6 +10,7 @@ import com.example.soulvent.model.Comment
 import com.example.soulvent.model.Post
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import com.example.soulvent.data.GenerationResult
 
 class PostViewModel(val repository: PostRepository = PostRepository()) : ViewModel() {
 
@@ -31,6 +32,11 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
 
     private val _isGeneratingImage = MutableStateFlow(false)
     val isGeneratingImage = _isGeneratingImage.asStateFlow()
+
+    // New state for holding image generation errors
+    private val _imageGenerationError = MutableStateFlow<String?>(null)
+    val imageGenerationError = _imageGenerationError.asStateFlow()
+
 
     // New state for the tag filter
     private val _selectedTagFilter = MutableStateFlow<String?>(null)
@@ -130,7 +136,15 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
     fun generateArtForPost(text: String) {
         viewModelScope.launch {
             _isGeneratingImage.value = true
-            _generatedImageBitmap.value = AIArtGenerator.generateImage(text)
+            _imageGenerationError.value = null // Clear previous errors
+            when (val result = AIArtGenerator.generateImage(text)) {
+                is GenerationResult.Success -> {
+                    _generatedImageBitmap.value = result.bitmap
+                }
+                is GenerationResult.Error -> {
+                    _imageGenerationError.value = result.message
+                }
+            }
             _isGeneratingImage.value = false
         }
     }

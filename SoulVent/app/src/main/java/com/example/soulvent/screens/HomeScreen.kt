@@ -56,6 +56,13 @@ fun HomeScreen(
                     containerColor = MaterialTheme.colorScheme.primary
                 ),
                 actions = {
+                    IconButton(onClick = { navController.navigate("meditation_library") }) {
+                        Icon(
+                            imageVector = Icons.Default.SelfImprovement, // A fitting icon for meditation
+                            contentDescription = "Guided Meditations",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                     IconButton(onClick = { navController.navigate("mindfulness") }) {
                         Icon(
                             imageVector = Icons.Default.Spa,

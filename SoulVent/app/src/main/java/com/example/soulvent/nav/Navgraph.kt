@@ -60,5 +60,17 @@ fun SoulMateNavGraph(navController: NavHostController, paddingValues: PaddingVal
         composable("journal") {
             JournalScreen(navController = navController)
         }
+        composable("meditation_library") {
+            MeditationLibraryScreen(navController = navController)
+        }
+        composable(
+            "meditation_player/{meditationId}",
+            arguments = listOf(navArgument("meditationId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val meditationId = backStackEntry.arguments?.getString("meditationId")
+            if (meditationId != null) {
+                MeditationPlayerScreen(navController = navController, meditationId = meditationId)
+            }
+        }
     }
 }
