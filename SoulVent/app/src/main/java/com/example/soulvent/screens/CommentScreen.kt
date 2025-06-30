@@ -38,6 +38,9 @@ fun CommentsScreen(
     val commentsLoadError by viewModel.commentsLoadError.collectAsState()
     val isAddingComment by viewModel.isAddingComment.collectAsState()
     var commentToBlock by remember { mutableStateOf<Comment?>(null) }
+    var commentToEdit by remember { mutableStateOf<Comment?>(null) }
+    var commentToReport by remember { mutableStateOf<Comment?>(null) }
+    var editedCommentText by remember { mutableStateOf("") }
 
     LaunchedEffect(postId) {
         viewModel.loadCommentsForPost(postId)
@@ -56,6 +59,51 @@ fun CommentsScreen(
             },
             dismissButton = {
                 Button(onClick = { commentToBlock = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (commentToEdit != null) {
+        AlertDialog(
+            onDismissRequest = { commentToEdit = null },
+            title = { Text("Edit Comment") },
+            text = {
+                OutlinedTextField(
+                    value = editedCommentText,
+                    onValueChange = { editedCommentText = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        commentToEdit?.let {
+                            viewModel.editComment(it.postId, it.id, editedCommentText) {
+                                commentToEdit = null
+                            }
+                        }
+                    }
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                Button(onClick = { commentToEdit = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (commentToReport != null) {
+        AlertDialog(
+            onDismissRequest = { commentToReport = null },
+            title = { Text("Report Comment") },
+            text = { Text("Are you sure you want to report this comment?") },
+            confirmButton = {
+                Button(onClick = {
+                    commentToReport?.let { viewModel.reportComment(it.postId, it.id) }
+                    commentToReport = null
+                }) { Text("Report") }
+            },
+            dismissButton = {
+                Button(onClick = { commentToReport = null }) { Text("Cancel") }
             }
         )
     }
@@ -102,7 +150,12 @@ fun CommentsScreen(
                         CommentItem(
                             comment = comment,
                             viewModel = viewModel,
-                            onBlockClick = { commentToBlock = comment }
+                            onBlockClick = { commentToBlock = comment },
+                            onEditClick = {
+                                editedCommentText = it.content
+                                commentToEdit = it
+                            },
+                            onReportClick = { commentToReport = comment }
                         )
                     }
                 }
@@ -115,7 +168,9 @@ fun CommentsScreen(
 fun CommentItem(
     comment: Comment,
     viewModel: PostViewModel,
-    onBlockClick: () -> Unit
+    onBlockClick: () -> Unit,
+    onEditClick: (Comment) -> Unit,
+    onReportClick: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val currentUserId by viewModel.currentUserId.collectAsState()
@@ -138,22 +193,38 @@ fun CommentItem(
                 Spacer(modifier = Modifier.height(4.dp))
                 val timestampText = comment.timestamp?.let { formatTimestamp(it) } ?: "..."
                 Text(
-                    text = timestampText,
+                    text = timestampText + if (comment.lastEdited != null) " (edited)" else "",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (comment.userId != currentUserId && currentUserId != null) {
-                Box {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    if (comment.userId == currentUserId) {
+                        DropdownMenuItem(
+                            text = { Text("Edit") },
+                            onClick = {
+                                showMenu = false
+                                onEditClick(comment)
+                            }
+                        )
                     }
-                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    if (comment.userId != currentUserId && currentUserId != null) {
                         DropdownMenuItem(
                             text = { Text("Block User") },
                             onClick = {
                                 showMenu = false
                                 onBlockClick()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Report") },
+                            onClick = {
+                                showMenu = false
+                                onReportClick()
                             }
                         )
                     }

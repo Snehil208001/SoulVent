@@ -1,19 +1,18 @@
 package com.example.soulvent.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -33,6 +32,7 @@ fun HomeScreen(
     val isPostsLoading by viewModel.isLoading.collectAsState()
     val loadError by viewModel.loadError.collectAsState()
     val selectedMoodFilter by viewModel.selectedMoodFilter.collectAsState()
+    val dailyPrompt by viewModel.dailyPrompt.collectAsState()
     val moods = listOf("All", "😊 Happy", "😢 Sad", "😬 Anxious", "🙏 Grateful", "😡 Angry")
 
     val currentOnRefresh by rememberUpdatedState { viewModel.loadPosts() }
@@ -56,6 +56,13 @@ fun HomeScreen(
                     containerColor = MaterialTheme.colorScheme.primary
                 ),
                 actions = {
+                    IconButton(onClick = { navController.navigate("mindfulness") }) {
+                        Icon(
+                            imageVector = Icons.Default.Spa,
+                            contentDescription = "Mindfulness Tool",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                     IconButton(onClick = { navController.navigate("art_canvas") }) {
                         Icon(
                             imageVector = Icons.Default.Palette,
@@ -108,6 +115,24 @@ fun HomeScreen(
                         label = { Text(mood) }
                     )
                     Spacer(modifier = Modifier.width(8.dp))
+                }
+            }
+
+            dailyPrompt?.let { prompt ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clickable {
+                            navController.navigate("${Screen.Post.route}?prompt=${prompt}")
+                        },
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Prompt of the Day", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(prompt, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
 

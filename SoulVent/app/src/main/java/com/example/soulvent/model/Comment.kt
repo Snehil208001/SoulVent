@@ -8,5 +8,7 @@ data class Comment(
     val postId: String = "",
     val userId: String = "",
     val content: String = "",
-    @ServerTimestamp val timestamp: Timestamp? = null
+    @ServerTimestamp val timestamp: Timestamp? = null,
+    val lastEdited: Timestamp? = null,
+    val reportCount: Int = 0 // Add this line
 )

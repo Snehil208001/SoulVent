@@ -6,7 +6,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -46,6 +48,48 @@ fun SettingsScreen(
                 .fillMaxSize()
         ) {
             item {
+                Text(
+                    "General",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { navController.navigate("journal") }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Book,
+                        contentDescription = "My Journal",
+                        modifier = Modifier.padding(end = 16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text("My Journal", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { navController.navigate("mood_history") }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Leaderboard,
+                        contentDescription = "Mood History",
+                        modifier = Modifier.padding(end = 16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text("View Mood History", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+            item {
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 Text(
                     "Choose Your Theme",
                     style = MaterialTheme.typography.titleLarge,

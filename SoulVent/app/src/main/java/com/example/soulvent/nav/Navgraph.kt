@@ -9,12 +9,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.soulvent.screens.ArtCanvasScreen
-import com.example.soulvent.screens.CommentsScreen
-import com.example.soulvent.screens.GratitudeJarScreen
-import com.example.soulvent.screens.HomeScreen
-import com.example.soulvent.screens.PostVentScreen
-import com.example.soulvent.screens.SettingsScreen
+import com.example.soulvent.screens.*
 
 @Composable
 fun SoulMateNavGraph(navController: NavHostController, paddingValues: PaddingValues) {
@@ -26,8 +21,15 @@ fun SoulMateNavGraph(navController: NavHostController, paddingValues: PaddingVal
         composable(Screen.Home.route) {
             HomeScreen(navController = navController)
         }
-        composable(Screen.Post.route) {
-            PostVentScreen(navController = navController)
+        composable(
+            route = "${Screen.Post.route}?prompt={prompt}",
+            arguments = listOf(navArgument("prompt") {
+                type = NavType.StringType
+                nullable = true
+            })
+        ) { backStackEntry ->
+            val prompt = backStackEntry.arguments?.getString("prompt")
+            PostVentScreen(navController = navController, initialPrompt = prompt)
         }
         composable(
             route = Screen.Comments.route,
@@ -46,9 +48,17 @@ fun SoulMateNavGraph(navController: NavHostController, paddingValues: PaddingVal
         composable("gratitude_jar") {
             GratitudeJarScreen(navController = navController)
         }
-        // Add the new route for the Art Canvas screen
         composable("art_canvas") {
             ArtCanvasScreen(navController = navController)
+        }
+        composable("mindfulness") {
+            MindfulnessScreen(navController = navController)
+        }
+        composable("mood_history") {
+            MoodHistoryScreen(navController = navController)
+        }
+        composable("journal") {
+            JournalScreen(navController = navController)
         }
     }
 }

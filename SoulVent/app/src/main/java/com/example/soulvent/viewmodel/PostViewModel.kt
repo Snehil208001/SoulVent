@@ -1,8 +1,10 @@
 package com.example.soulvent.viewmodel
 
+import android.graphics.Bitmap
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.soulvent.data.AIArtGenerator
 import com.example.soulvent.data.PostRepository
 import com.example.soulvent.model.Comment
 import com.example.soulvent.model.Post
@@ -11,37 +13,51 @@ import kotlinx.coroutines.launch
 
 class PostViewModel(val repository: PostRepository = PostRepository()) : ViewModel() {
 
-    // --- State for the unfiltered list of all posts ---
     private val _allPosts = MutableStateFlow<List<Post>>(emptyList())
-
-    // --- State for the mood filter ---
     private val _selectedMoodFilter = MutableStateFlow<String?>(null)
     val selectedMoodFilter: StateFlow<String?> = _selectedMoodFilter.asStateFlow()
 
-    // --- State for the list of blocked users ---
     private val _blockedUsers = MutableStateFlow<List<String>>(emptyList())
     val blockedUsers: StateFlow<List<String>> = _blockedUsers.asStateFlow()
 
-    // --- State for the current user's ID ---
     private val _currentUserId = MutableStateFlow<String?>(null)
     val currentUserId: StateFlow<String?> = _currentUserId.asStateFlow()
 
+    private val _dailyPrompt = MutableStateFlow<String?>(null)
+    val dailyPrompt: StateFlow<String?> = _dailyPrompt.asStateFlow()
 
-    // --- Public State that combines all data for the final post list ---
+    private val _generatedImageBitmap = MutableStateFlow<Bitmap?>(null)
+    val generatedImageBitmap = _generatedImageBitmap.asStateFlow()
+
+    private val _isGeneratingImage = MutableStateFlow(false)
+    val isGeneratingImage = _isGeneratingImage.asStateFlow()
+
+    // New state for the tag filter
+    private val _selectedTagFilter = MutableStateFlow<String?>(null)
+    val selectedTagFilter: StateFlow<String?> = _selectedTagFilter.asStateFlow()
+
     val posts: StateFlow<List<Post>> = combine(
         _allPosts,
         _selectedMoodFilter,
-        _blockedUsers
-    ) { allPosts, moodFilter, blockedList ->
+        _blockedUsers,
+        _selectedTagFilter // Add the new filter to the combine block
+    ) { allPosts, moodFilter, blockedList, tagFilter ->
         val postsFilteredByMood = if (moodFilter != null) {
             allPosts.filter { it.mood == moodFilter }
         } else {
             allPosts
         }
-        postsFilteredByMood.filter { post -> post.userId !in blockedList }
+        val postsFilteredByTag = if (tagFilter != null) {
+            postsFilteredByMood.filter { it.tags.contains(tagFilter) }
+        } else {
+            postsFilteredByMood
+        }
+        postsFilteredByTag.filter { post -> post.userId !in blockedList }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // --- Other UI States ---
+    private val _userPosts = MutableStateFlow<List<Post>>(emptyList())
+    val userPosts: StateFlow<List<Post>> = _userPosts.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -79,6 +95,8 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
         _currentUserId.value = repository.getCurrentUserId()
         listenForBlockedUsers()
         loadPosts()
+        loadUserPosts()
+        loadDailyPrompt()
     }
 
     private fun listenForBlockedUsers() {
@@ -90,6 +108,30 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
                         _blockedUsers.value = blockedList
                     }
             }
+        }
+    }
+
+    private fun loadUserPosts() {
+        viewModelScope.launch {
+            repository.getPostsForCurrentUser()
+                .catch { e -> Log.e(TAG, "Error loading user posts", e) }
+                .collect { posts ->
+                    _userPosts.value = posts
+                }
+        }
+    }
+
+    private fun loadDailyPrompt() {
+        viewModelScope.launch {
+            _dailyPrompt.value = repository.getRandomPrompt()
+        }
+    }
+
+    fun generateArtForPost(text: String) {
+        viewModelScope.launch {
+            _isGeneratingImage.value = true
+            _generatedImageBitmap.value = AIArtGenerator.generateImage(text)
+            _isGeneratingImage.value = false
         }
     }
 
@@ -112,20 +154,31 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
 
     fun setMoodFilter(mood: String?) {
         _selectedMoodFilter.value = mood
+        _selectedTagFilter.value = null // Clear tag filter when a mood is selected
     }
 
-    fun addPost(content: String, mood: String, onComplete: () -> Unit) {
+    // Function to set or clear the tag filter
+    fun setTagFilter(tag: String?) {
+        _selectedTagFilter.value = tag
+        _selectedMoodFilter.value = null // Clear mood filter when a tag is selected
+    }
+
+    fun addPost(content: String, mood: String, tags: List<String>, onComplete: () -> Unit) {
         _isAddingPost.value = true
         _addPostError.value = null
         viewModelScope.launch {
             try {
-                repository.addPost(content, mood)
+                var imageUrl: String? = null
+                if (_generatedImageBitmap.value != null) {
+                    imageUrl = repository.uploadImage(_generatedImageBitmap.value!!)
+                }
+                repository.addPost(content, mood, tags, imageUrl)
                 onComplete()
             } catch (e: Exception) {
-                Log.e(TAG, "addPost: Error adding post: ${e.message}", e)
                 _addPostError.value = e.message
             } finally {
                 _isAddingPost.value = false
+                _generatedImageBitmap.value = null
             }
         }
     }
@@ -140,18 +193,18 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
         }
     }
 
-    fun toggleLike(postId: String) {
+    fun toggleReaction(postId: String, reactionType: String) {
         viewModelScope.launch {
             try {
-                repository.toggleLike(postId)
+                repository.toggleReaction(postId, reactionType)
             } catch (e: Exception) {
-                Log.e(TAG, "toggleLike: Error toggling like for post $postId: ${e.message}", e)
+                Log.e(TAG, "toggleReaction: Error toggling reaction for post $postId: ${e.message}", e)
             }
         }
     }
 
-    suspend fun hasUserLikedPost(postId: String): Boolean {
-        return repository.hasUserLikedPost(postId)
+    suspend fun getUserReaction(postId: String): String? {
+        return repository.getUserReaction(postId)
     }
 
     fun loadCommentsForPost(postId: String) {
@@ -184,6 +237,59 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
                 _addCommentError.value = e.message
             } finally {
                 _isAddingComment.value = false
+            }
+        }
+    }
+
+    fun editPost(postId: String, newContent: String, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                repository.updatePost(postId, newContent)
+                onComplete()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error editing post", e)
+            }
+        }
+    }
+
+    fun editComment(postId: String, commentId: String, newContent: String, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                repository.updateComment(postId, commentId, newContent)
+                onComplete()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error editing comment", e)
+            }
+        }
+    }
+
+    fun reportPost(postId: String) {
+        viewModelScope.launch {
+            try {
+                repository.reportPost(postId)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error reporting post", e)
+            }
+        }
+    }
+
+    fun reportComment(postId: String, commentId: String) {
+        viewModelScope.launch {
+            try {
+                repository.reportComment(postId, commentId)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error reporting comment", e)
+            }
+        }
+    }
+
+    fun deletePost(postId: String, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                repository.deletePost(postId)
+                onComplete()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting post", e)
             }
         }
     }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -30,6 +31,9 @@ fun DrawingCanvas(
 
     // This will hold the path for the line currently being drawn
     var inProgressPath by remember { mutableStateOf<Path?>(null) }
+    var currentPosition by remember { mutableStateOf(Offset.Zero) }
+    var previousPosition by remember { mutableStateOf(Offset.Zero) }
+
 
     // This effect will run when the clear signal is received
     LaunchedEffect(clear) {
@@ -48,11 +52,20 @@ fun DrawingCanvas(
                     onDragStart = { offset ->
                         // Start a new path for the line being drawn
                         inProgressPath = Path().apply { moveTo(offset.x, offset.y) }
+                        currentPosition = offset
+                        previousPosition = offset
                     },
                     // As the user drags their finger
-                    onDrag = { change, dragAmount ->
+                    onDrag = { change, _ ->
                         // Add the new points to the in-progress path
-                        inProgressPath?.lineTo(change.position.x, change.position.y)
+                        previousPosition = currentPosition
+                        currentPosition = change.position
+                        inProgressPath?.quadraticBezierTo(
+                            previousPosition.x,
+                            previousPosition.y,
+                            (previousPosition.x + currentPosition.x) / 2,
+                            (previousPosition.y + currentPosition.y) / 2
+                        )
                         // Force a redraw of the canvas to show the updated in-progress line
                         change.consume()
                     },

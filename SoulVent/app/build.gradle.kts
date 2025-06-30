@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +8,13 @@ plugins {
     alias(libs.plugins.google.gms.google.services)
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
+}
+
+// Read properties from local.properties
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
 }
 
 android {
@@ -19,6 +29,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Explicitly create the BuildConfig field from local.properties
+        buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties.getProperty("GEMINI_API_KEY")}\"")
     }
 
     buildTypes {
@@ -39,8 +52,10 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
+
 
 dependencies {
 
@@ -102,5 +117,11 @@ dependencies {
 
     //canvas
     implementation("dev.shreyaspatil:capturable:1.0.3")
+
+    //mood tracking
+    implementation("co.yml:ycharts:2.1.0")
+
+    //gemini integration
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
 }

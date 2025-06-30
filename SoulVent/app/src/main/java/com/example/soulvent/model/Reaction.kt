@@ -1,4 +1,5 @@
-package com.example.soulvent.model // Corrected package name
+package com.example.soulvent.model
+
 import com.google.firebase.firestore.ServerTimestamp
 import java.util.Date
 
