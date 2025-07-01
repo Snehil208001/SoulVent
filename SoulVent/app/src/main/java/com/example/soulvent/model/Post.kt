@@ -12,10 +12,10 @@ data class Post(
     val timestamp: Timestamp? = null,
     val commentCount: Int = 0,
     @get:PropertyName("reactions")
-    val reactions: Map<String, Int> = emptyMap(),
+    val reactions: Map<String, Long> = emptyMap(),
     val mood: String = "",
     val tags: List<String> = emptyList(),
-    val imageUrl: String? = null, // Add this line
+    val imageUrl: String? = null,
     val lastEdited: Timestamp? = null,
     val reportCount: Int = 0
 )

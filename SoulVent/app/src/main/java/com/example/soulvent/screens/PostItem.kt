@@ -284,7 +284,7 @@ fun PostItem(
                                 )
                                 .clickable {
                                     viewModel.toggleReaction(post.id, type)
-                                    // The LaunchedEffect will handle updating the userReaction state from the database
+                                    userReaction = if (userReaction == type) null else type
                                     showReactions = false
                                 }
                                 .padding(8.dp)

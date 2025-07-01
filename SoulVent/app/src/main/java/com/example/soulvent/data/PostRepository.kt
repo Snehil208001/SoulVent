@@ -5,11 +5,7 @@ import com.example.soulvent.model.Comment
 import com.example.soulvent.model.Post
 import com.example.soulvent.model.Reaction
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
-import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -59,18 +55,13 @@ class PostRepository {
 
     suspend fun getRandomPrompt(): String? {
         return try {
-            val promptsRef = database.child("prompts")
-            val snapshot = promptsRef.get().await()
-
-            if (snapshot.exists()) {
-                val promptsList = mutableListOf<String>()
-                for (child in snapshot.children) {
-                    child.getValue(String::class.java)?.let {
-                        promptsList.add(it)
-                    }
-                }
-                promptsList.randomOrNull()
-            } else null
+            val snapshot = db.collection("prompts").get().await()
+            if (!snapshot.isEmpty) {
+                val prompts = snapshot.documents.mapNotNull { it.getString("prompt") }
+                prompts.randomOrNull()
+            } else {
+                null
+            }
         } catch (e: Exception) {
             null
         }
@@ -124,21 +115,20 @@ class PostRepository {
     }
 
     suspend fun addComment(postId: String, content: String) {
+        val commentId = postsCollection.document(postId).collection("comments").document().id
         val comment = Comment(
-            id = postsCollection.document(postId).collection("comments").document().id,
+            id = commentId,
             postId = postId,
             userId = userId,
             content = content
         )
 
         val postRef = postsCollection.document(postId)
+        val commentRef = postRef.collection("comments").document(commentId)
 
         db.runTransaction { transaction ->
-            val postSnapshot = transaction.get(postRef)
-            if (postSnapshot.exists()) {
-                transaction.set(postRef.collection("comments").document(comment.id), comment)
-                transaction.update(postRef, "commentCount", FieldValue.increment(1))
-            } else throw Exception("Post with ID $postId not found.")
+            transaction.set(commentRef, comment)
+            transaction.update(postRef, "commentCount", FieldValue.increment(1))
         }.await()
 
         // Realtime DB mirror
@@ -171,41 +161,41 @@ class PostRepository {
     }
 
     suspend fun toggleReaction(postId: String, reactionType: String) {
-        val reactionRef = postsCollection.document(postId)
-            .collection("reactions")
-            .document(userId)
         val postRef = postsCollection.document(postId)
+        val reactionRef = postRef.collection("reactions").document(userId)
 
         db.runTransaction { transaction ->
-            val reactionSnapshot = transaction.get(reactionRef)
             val postSnapshot = transaction.get(postRef)
-            val currentReactions = postSnapshot.get("reactions") as? Map<String, Long> ?: emptyMap()
-            val existingReactionType = reactionSnapshot.getString("type")
+            val reactionSnapshot = transaction.get(reactionRef)
+
+            val post = postSnapshot.toObject(Post::class.java)!!
+            val reactions = post.reactions.toMutableMap()
 
             if (reactionSnapshot.exists()) {
+                val existingReaction = reactionSnapshot.toObject(Reaction::class.java)!!
+                // Decrement the old reaction count
+                reactions[existingReaction.type] = (reactions[existingReaction.type] ?: 1) - 1
+                if (reactions[existingReaction.type]!! <= 0) {
+                    reactions.remove(existingReaction.type)
+                }
                 transaction.delete(reactionRef)
-                val oldCount = (currentReactions[existingReactionType] ?: 1) - 1
-                transaction.update(postRef, "reactions.$existingReactionType", oldCount)
 
-                if (existingReactionType != reactionType) {
-                    val newReaction = Reaction(userId, postId, userId, reactionType)
+                if (existingReaction.type != reactionType) {
+                    // If the user is changing their reaction, add the new one
+                    reactions[reactionType] = (reactions[reactionType] ?: 0) + 1
+                    val newReaction = Reaction(id = userId, postId = postId, userId = userId, type = reactionType)
                     transaction.set(reactionRef, newReaction)
-                    val newCount = (currentReactions[reactionType] ?: 0) + 1
-                    transaction.update(postRef, "reactions.$reactionType", newCount)
-
-                    database.child("posts/$postId/reactions/$reactionType").setValue(newCount)
-                } else {
-                    database.child("posts/$postId/reactions/$existingReactionType").setValue(oldCount)
                 }
             } else {
-                val newReaction = Reaction(userId, postId, userId, reactionType)
+                // If the user has no existing reaction, add the new one
+                reactions[reactionType] = (reactions[reactionType] ?: 0) + 1
+                val newReaction = Reaction(id = userId, postId = postId, userId = userId, type = reactionType)
                 transaction.set(reactionRef, newReaction)
-                val newCount = (currentReactions[reactionType] ?: 0) + 1
-                transaction.update(postRef, "reactions.$reactionType", newCount)
-
-                database.child("posts/$postId/reactions/$reactionType").setValue(newCount)
             }
-            null
+            transaction.update(postRef, "reactions", reactions)
+
+            // Mirror to Realtime Database
+            database.child("posts").child(postId).child("reactions").setValue(reactions)
         }.await()
     }
 

@@ -38,8 +38,6 @@ fun SoulMateNavGraph(navController: NavHostController, paddingValues: PaddingVal
             val postId = backStackEntry.arguments?.getString("postId")
             if (postId != null) {
                 CommentsScreen(navController = navController, postId = postId)
-            } else {
-                navController.popBackStack()
             }
         }
         composable("settings") {

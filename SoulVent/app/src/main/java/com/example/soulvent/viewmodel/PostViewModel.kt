@@ -33,12 +33,10 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
     private val _isGeneratingImage = MutableStateFlow(false)
     val isGeneratingImage = _isGeneratingImage.asStateFlow()
 
-    // New state for holding image generation errors
     private val _imageGenerationError = MutableStateFlow<String?>(null)
     val imageGenerationError = _imageGenerationError.asStateFlow()
 
 
-    // New state for the tag filter
     private val _selectedTagFilter = MutableStateFlow<String?>(null)
     val selectedTagFilter: StateFlow<String?> = _selectedTagFilter.asStateFlow()
 
@@ -46,7 +44,7 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
         _allPosts,
         _selectedMoodFilter,
         _blockedUsers,
-        _selectedTagFilter // Add the new filter to the combine block
+        _selectedTagFilter
     ) { allPosts, moodFilter, blockedList, tagFilter ->
         val postsFilteredByMood = if (moodFilter != null) {
             allPosts.filter { it.mood == moodFilter }
@@ -136,7 +134,7 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
     fun generateArtForPost(text: String) {
         viewModelScope.launch {
             _isGeneratingImage.value = true
-            _imageGenerationError.value = null // Clear previous errors
+            _imageGenerationError.value = null
             when (val result = AIArtGenerator.generateImage(text)) {
                 is GenerationResult.Success -> {
                     _generatedImageBitmap.value = result.bitmap
@@ -168,13 +166,12 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
 
     fun setMoodFilter(mood: String?) {
         _selectedMoodFilter.value = mood
-        _selectedTagFilter.value = null // Clear tag filter when a mood is selected
+        _selectedTagFilter.value = null
     }
 
-    // Function to set or clear the tag filter
     fun setTagFilter(tag: String?) {
         _selectedTagFilter.value = tag
-        _selectedMoodFilter.value = null // Clear mood filter when a tag is selected
+        _selectedMoodFilter.value = null
     }
 
     fun addPost(content: String, mood: String, tags: List<String>, onComplete: () -> Unit) {
@@ -244,7 +241,6 @@ class PostViewModel(val repository: PostRepository = PostRepository()) : ViewMod
         viewModelScope.launch {
             try {
                 repository.addComment(postId, content)
-                loadCommentsForPost(postId)
                 onComplete()
             } catch (e: Exception) {
                 Log.e(TAG, "addComment: Error adding comment: ${e.message}", e)
