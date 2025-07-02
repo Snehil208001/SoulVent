@@ -66,17 +66,14 @@ Run the app: Build and run the app on an Android emulator or a physical device.
 📲 Download
 You can download the latest APK here:
 
-[Download APK](https://drive.google.com/drive/folders/1PoOl8NeylIq3Jv95luqulxK_8tBcKcp0?usp=drive_link)
+[Download APK](https://drive.google.com/drive/folders/1P_edVz433Mc4NOZWRAAv01sVoVu6WSRJ?usp=drive_link)
 
-📹 Demo
+📹 Video of Explanation
 Here is a screen recording demonstrating the app's features:
 
+(https://drive.google.com/drive/folders/1CE9UdsxP91uy9VIlSXeEB3eAd1iW2d7p?usp=sharing)
 
-https://drive.google.com/drive/folders/1IGwUhj-Hn4ld6HuztMBCZqPUC8F0UVxr?usp=sharing
-📸 Screenshots
-![image alt](https://github.com/Snehil208001/SoulVent/blob/f6db78af05006494fbf9e6cf15f4daa3f50ba7a0/Soulvent1.jpg)
-![image alt](https://github.com/Snehil208001/SoulVent/blob/f6db78af05006494fbf9e6cf15f4daa3f50ba7a0/SoulVent2.jpg)
-Export to Sheets
+
 📦 Dependencies
 The SoulVent app uses a number of modern Android libraries and technologies, including:
 
